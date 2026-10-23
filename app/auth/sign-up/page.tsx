@@ -1,0 +1,15 @@
+import { AuthForm } from '@/components/auth-form'
+import { SiteHeader } from '@/components/site-header'
+
+export const metadata = { title: 'Sign up · DriveFlix' }
+
+export default function SignUpPage() {
+  return (
+    <>
+      <SiteHeader />
+      <main className="flex justify-center px-4 py-16">
+        <AuthForm mode="sign-up" />
+      </main>
+    </>
+  )
+}
