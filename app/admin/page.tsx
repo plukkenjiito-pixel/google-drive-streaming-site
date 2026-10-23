@@ -26,7 +26,7 @@ export default async function AdminPage() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex max-w-4xl flex-col gap-8 px-4 py-8 md:px-6">
+      <main className="mx-auto flex max-w-4xl flex-col gap-8 px-4 pt-24 pb-8 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-semibold tracking-tight">Admin</h1>

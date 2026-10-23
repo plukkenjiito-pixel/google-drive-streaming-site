@@ -1,8 +1,7 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { SiteHeader } from '@/components/site-header'
+import { Billboard } from '@/components/billboard'
 import { LibraryBrowser } from '@/components/library-browser'
 import type { Library, Video } from '@/lib/catalog'
 
@@ -23,25 +22,23 @@ export default async function LibraryPage({ params }: { params: Promise<{ id: st
 
   if (!library) notFound()
   const lib = library as Library
+  const list = (videos ?? []) as Video[]
+  const first = list[0]
 
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-8 md:px-6">
-        <div className="flex flex-col gap-3">
-          <Link
-            href="/"
-            className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            All libraries
-          </Link>
-          <h1 className="text-balance text-3xl font-semibold tracking-tight">{lib.name}</h1>
-          {lib.description && (
-            <p className="max-w-2xl text-pretty text-muted-foreground">{lib.description}</p>
-          )}
+      <main className="pb-16">
+        <Billboard
+          eyebrow={`Library · ${list.length} video${list.length === 1 ? '' : 's'}`}
+          title={lib.name}
+          description={lib.description}
+          backdropFileId={first?.drive_file_id}
+          playHref={first ? `/watch/${first.id}` : undefined}
+        />
+        <div className="relative z-10 -mt-16 md:-mt-28">
+          <LibraryBrowser videos={list} />
         </div>
-        <LibraryBrowser videos={(videos ?? []) as Video[]} />
       </main>
     </>
   )

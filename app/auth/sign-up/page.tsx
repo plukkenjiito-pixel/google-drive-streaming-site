@@ -7,7 +7,7 @@ export default function SignUpPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex justify-center px-4 py-16">
+      <main className="flex justify-center px-4 pt-28 pb-16">
         <AuthForm mode="sign-up" />
       </main>
     </>

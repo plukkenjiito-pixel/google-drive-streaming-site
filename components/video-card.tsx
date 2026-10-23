@@ -10,25 +10,20 @@ export function VideoCard({ video }: { video: Video }) {
   return (
     <Link
       href={`/watch/${video.id}`}
-      className="group flex flex-col gap-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group relative block rounded transition-transform duration-300 outline-none hover:z-10 hover:scale-105 focus-visible:z-10 focus-visible:scale-105 focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <div className="relative">
-        <VideoThumb driveFileId={video.drive_file_id} alt="" />
-        <div className="absolute inset-0 flex items-center justify-center bg-background/0 opacity-0 transition-opacity group-hover:bg-background/40 group-hover:opacity-100">
-          <span className="flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <Play className="size-5 translate-x-px fill-current" aria-hidden="true" />
+      <VideoThumb driveFileId={video.drive_file_id} alt="" className="rounded" />
+      <div className="absolute inset-0 flex flex-col justify-end rounded bg-gradient-to-t from-black/90 via-black/20 to-transparent p-2 md:p-3">
+        <div className="flex items-end justify-between gap-2">
+          <h3 className="line-clamp-2 text-xs leading-tight font-bold drop-shadow md:text-sm">{title}</h3>
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white text-black opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            <Play className="size-3.5 translate-x-px fill-current" aria-hidden="true" />
           </span>
         </div>
-        {duration && (
-          <span className="absolute right-2 bottom-2 rounded bg-background/85 px-1.5 py-0.5 font-mono text-xs">
-            {duration}
-          </span>
-        )}
-      </div>
-      <div className="flex flex-col gap-0.5 px-0.5">
-        <h3 className="line-clamp-2 text-sm font-medium leading-snug">{title}</h3>
-        {video.folder_path && (
-          <p className="truncate text-xs text-muted-foreground">{video.folder_path}</p>
+        {(duration || video.folder_path) && (
+          <p className="mt-0.5 hidden truncate text-[11px] text-foreground/70 group-hover:block">
+            {[duration, video.folder_path].filter(Boolean).join(' · ')}
+          </p>
         )}
       </div>
     </Link>

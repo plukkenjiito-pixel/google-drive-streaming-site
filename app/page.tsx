@@ -1,113 +1,116 @@
 import Link from 'next/link'
-import { FolderOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { SiteHeader } from '@/components/site-header'
+import { Billboard } from '@/components/billboard'
+import { MediaRow, MediaRowItem } from '@/components/media-row'
 import { VideoCard } from '@/components/video-card'
-import { VideoThumb } from '@/components/video-thumb'
-import { buttonVariants } from '@/components/ui/button'
-import type { Library, Video } from '@/lib/catalog'
+import { LibraryCard } from '@/components/library-card'
+import { displayTitle, formatDuration, type Library, type Video } from '@/lib/catalog'
+
+const PER_ROW = 20
 
 export default async function HomePage() {
   const supabase = await createClient()
-  const [{ data: libraries }, { data: recent }, { data: covers }] = await Promise.all([
+  const [{ data: libraries }, { data: videos }] = await Promise.all([
     supabase.from('libraries').select('*').order('created_at', { ascending: false }),
-    supabase.from('videos').select('*').order('created_at', { ascending: false }).limit(12),
-    supabase.from('videos').select('library_id, drive_file_id').limit(500),
+    supabase.from('videos').select('*').order('created_at', { ascending: false }).limit(1000),
   ])
 
   const libs = (libraries ?? []) as Library[]
-  const recentVideos = (recent ?? []) as Video[]
-  const coverByLibrary = new Map<string, string>()
-  const countByLibrary = new Map<string, number>()
-  for (const v of covers ?? []) {
-    if (!coverByLibrary.has(v.library_id)) coverByLibrary.set(v.library_id, v.drive_file_id)
-    countByLibrary.set(v.library_id, (countByLibrary.get(v.library_id) ?? 0) + 1)
+  const allVideos = (videos ?? []) as Video[]
+  const byLibrary = new Map<string, Video[]>()
+  for (const v of allVideos) {
+    byLibrary.set(v.library_id, [...(byLibrary.get(v.library_id) ?? []), v])
   }
+
+  const featured = allVideos[0]
+  const featuredLibrary = featured ? libs.find((l) => l.id === featured.library_id) : undefined
 
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex max-w-7xl flex-col gap-12 px-4 py-8 md:px-6 md:py-12">
-        <section className="flex flex-col gap-3">
-          <p className="text-sm font-medium uppercase tracking-widest text-primary">Your library</p>
-          <h1 className="text-balance text-3xl font-semibold tracking-tight md:text-5xl">
-            Stream straight from Google Drive.
-          </h1>
-          <p className="max-w-2xl text-pretty text-muted-foreground md:text-lg">
-            Every video in your shared Drive folders, organized and ready to play.
-          </p>
-        </section>
-
-        {libs.length === 0 ? (
-          <section className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-border px-6 py-16 text-center">
-            <FolderOpen className="size-10 text-muted-foreground" aria-hidden="true" />
-            <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-medium">No libraries yet</h2>
-              <p className="text-sm text-muted-foreground">
-                Sign in as admin and add a public Google Drive folder to get started.
-              </p>
-            </div>
-            <Link href="/admin" className={buttonVariants()}>
-              Add a Drive folder
-            </Link>
-          </section>
+      <main className="pb-16">
+        {featured ? (
+          <Billboard
+            eyebrow={featuredLibrary?.name ?? 'Featured'}
+            title={displayTitle(featured.name)}
+            description={
+              featuredLibrary?.description ??
+              ([formatDuration(featured.duration_ms), featured.folder_path].filter(Boolean).join(' · ') ||
+                'Now streaming from your Google Drive.')
+            }
+            backdropFileId={featured.drive_file_id}
+            playHref={`/watch/${featured.id}`}
+            infoHref={featuredLibrary ? `/library/${featuredLibrary.id}` : undefined}
+          />
         ) : (
-          <section aria-labelledby="libraries-heading" className="flex flex-col gap-4">
-            <h2 id="libraries-heading" className="text-xl font-semibold">
-              Libraries
-            </h2>
-            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Billboard
+            eyebrow="Series"
+            title="Your Drive. Your Cinema."
+            description="Add a public Google Drive folder and every video inside becomes a title you can stream instantly."
+            infoHref="/admin"
+            infoLabel="Add a Drive folder"
+          />
+        )}
+
+        <div
+          className={
+            libs.length > 0
+              ? 'relative z-10 -mt-16 flex flex-col gap-4 md:-mt-28 md:gap-8'
+              : 'relative z-10 flex flex-col gap-4'
+          }
+        >
+          {libs.length > 0 && (
+            <MediaRow id="libraries" title="Your Libraries">
               {libs.map((lib) => {
-                const cover = coverByLibrary.get(lib.id)
-                const count = countByLibrary.get(lib.id) ?? 0
+                const items = byLibrary.get(lib.id) ?? []
                 return (
-                  <li key={lib.id}>
-                    <Link
-                      href={`/library/${lib.id}`}
-                      className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:border-primary/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                    >
-                      {cover ? (
-                        <VideoThumb driveFileId={cover} alt="" />
-                      ) : (
-                        <div className="flex aspect-video items-center justify-center rounded-md bg-muted">
-                          <FolderOpen className="size-8 text-muted-foreground" aria-hidden="true" />
-                        </div>
-                      )}
-                      <div className="flex items-start justify-between gap-3 px-1">
-                        <div className="flex min-w-0 flex-col gap-0.5">
-                          <h3 className="truncate font-medium">{lib.name}</h3>
-                          {lib.description && (
-                            <p className="line-clamp-1 text-sm text-muted-foreground">
-                              {lib.description}
-                            </p>
-                          )}
-                        </div>
-                        <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
-                          {count} video{count === 1 ? '' : 's'}
-                        </span>
-                      </div>
-                    </Link>
-                  </li>
+                  <MediaRowItem key={lib.id}>
+                    <LibraryCard
+                      library={lib}
+                      coverFileId={items[0]?.drive_file_id}
+                      count={items.length}
+                    />
+                  </MediaRowItem>
                 )
               })}
-            </ul>
-          </section>
-        )}
+            </MediaRow>
+          )}
 
-        {recentVideos.length > 0 && (
-          <section aria-labelledby="recent-heading" className="flex flex-col gap-4">
-            <h2 id="recent-heading" className="text-xl font-semibold">
-              Recently added
-            </h2>
-            <ul className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
-              {recentVideos.map((video) => (
-                <li key={video.id}>
+          {allVideos.length > 0 && (
+            <MediaRow id="recent" title="Recently Added">
+              {allVideos.slice(0, PER_ROW).map((video) => (
+                <MediaRowItem key={video.id}>
                   <VideoCard video={video} />
-                </li>
+                </MediaRowItem>
               ))}
-            </ul>
-          </section>
-        )}
+            </MediaRow>
+          )}
+
+          {libs.map((lib) => {
+            const items = byLibrary.get(lib.id) ?? []
+            if (items.length === 0) return null
+            return (
+              <MediaRow key={lib.id} id={`lib-${lib.id}`} title={lib.name} href={`/library/${lib.id}`}>
+                {items.slice(0, PER_ROW).map((video) => (
+                  <MediaRowItem key={video.id}>
+                    <VideoCard video={video} />
+                  </MediaRowItem>
+                ))}
+              </MediaRow>
+            )
+          })}
+
+          {libs.length === 0 && (
+            <p className="px-[4%] text-sm text-muted-foreground">
+              Nothing to watch yet.{' '}
+              <Link href="/admin" className="font-semibold text-foreground underline underline-offset-4">
+                Sign in as admin
+              </Link>{' '}
+              to add your first library.
+            </p>
+          )}
+        </div>
       </main>
     </>
   )
