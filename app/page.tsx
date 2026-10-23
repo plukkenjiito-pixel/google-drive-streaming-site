@@ -1,47 +1,53 @@
-export default function Page() {
+import { Suspense } from 'react'
+import { redirect } from 'next/navigation'
+import { Navbar } from '@/components/navbar'
+import { Hero, HeroSkeleton } from '@/components/browse/hero'
+import { FolderRow } from '@/components/browse/folder-row'
+import { VideoRow, VideoRowSkeleton } from '@/components/browse/video-row'
+import { getContinueWatching, getLibraryFolders } from '@/lib/library'
+import { requireUser } from '@/lib/session'
+
+export default async function HomePage() {
+  const user = await requireUser()
+  const [folders, continueWatching] = await Promise.all([
+    getLibraryFolders(user.id),
+    getContinueWatching(user.id),
+  ])
+
+  if (folders.length === 0) redirect('/folders?onboarding=1')
+
+  const inProgress = continueWatching.filter(
+    (p) => p.duration === 0 || p.position / p.duration < 0.95,
+  )
+
   return (
-    <main
-      style={{
-        colorScheme: 'light dark',
-        position: 'relative',
-        display: 'flex',
-        minHeight: '100vh',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'light-dark(#fff, #000)',
-        color: 'light-dark(#000, #fff)',
-      }}
-    >
-      <svg
-        aria-hidden="true"
-        style={{ width: 80, height: 80 }}
-        width={80}
-        height={80}
-        fill="none"
-        viewBox="0 0 20 20"
-        xmlns="http://www.w3.org/2000/svg"
-        stroke="currentColor"
-        strokeWidth="0.5"
-      >
-        <path
-          d="M14.2 14.2H17V6.9375C17 4.76288 15.2371 3 13.0625 3H5.8V5.8M14.2 14.2V7.79063L7.79062 14.2H14.2ZM14.2 14.2V17H6.9375C4.76288 17 3 15.2371 3 13.0625V5.8H5.8M5.8 5.8V12.2313L12.2313 5.8H5.8Z"
-          strokeLinejoin="round"
-        />
-      </svg>
-      <p
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: 'calc(50% + 56px)',
-          transform: 'translateX(-50%)',
-          whiteSpace: 'nowrap',
-          fontSize: '14px',
-          fontWeight: 500,
-          color: 'light-dark(#71717a, #a1a1aa)',
-        }}
-      >
-        Your v0 generation will show here.
-      </p>
-    </main>
+    <>
+      <Navbar user={user} />
+      <main className="pb-20">
+        <Suspense fallback={<HeroSkeleton />}>
+          <Hero userId={user.id} folders={folders} />
+        </Suspense>
+
+        <div className="relative z-10 -mt-16 flex flex-col gap-6 md:-mt-24 md:gap-10">
+          {inProgress.length > 0 ? (
+            <VideoRow
+              title={`Continue Watching for ${user.name.split(' ')[0]}`}
+              items={inProgress.map((p) => ({
+                id: p.fileId,
+                name: p.name,
+                hasThumbnail: true,
+                progress: p.duration > 0 ? p.position / p.duration : 0,
+              }))}
+            />
+          ) : null}
+
+          {folders.map((folder) => (
+            <Suspense key={folder.folderId} fallback={<VideoRowSkeleton title={folder.name} />}>
+              <FolderRow userId={user.id} folderId={folder.folderId} title={folder.name} />
+            </Suspense>
+          ))}
+        </div>
+      </main>
+    </>
   )
 }
